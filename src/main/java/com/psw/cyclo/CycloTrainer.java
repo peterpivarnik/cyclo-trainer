@@ -7,48 +7,55 @@ import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Properties;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class CycloTrainer {
 
-    private static final int BEEP_DURATION_SHORT = 500;
-    private static final String BEEP_SOUND_LOCATION = "/beep-01a.wav";
     private static final int HOURS_FOR_EXERCISE = 1;
+    private static final String BEEP_SOUND_LOCATION = "/beep-01a.wav";
+    private static final int BEEP_DURATION_SHORT = 500;
+    private static final int BEEP_DURATION_INITIAL = 15;
+    private static final int BEEP_DURATION_EXERCISE = 2;
+    private static final int BEEP_DURATION_RELAX = 3;
+    private static final List<Integer> DEFAULT_INTERVALS = Arrays.asList(BEEP_DURATION_INITIAL, BEEP_DURATION_EXERCISE, BEEP_DURATION_RELAX);
+    private static final String NUMBER_REGEX = "[0-9]+";
 
     public static void main(String[] attrs) {
+        List<Integer> intervals = checkAttrs(attrs);
         CycloTrainer cycloTrainer = new CycloTrainer();
-        final Properties properties = cycloTrainer.loadProperties();
-        cycloTrainer.startExercise(properties);
+        cycloTrainer.startExercise(intervals);
     }
 
-    private Properties loadProperties() {
-        Properties properties = new Properties();
-        String filename = "application.properties";
-        try (InputStream input = CycloTrainer.class.getClassLoader().getResourceAsStream(filename)) {
-            if (input == null) {
-                System.out.println("Sorry, unable to find " + filename);
-                return properties;
-            }
-            properties.load(input);
-            return properties;
-        } catch (IOException ex) {
-            throw new RuntimeException(ex);
+    private static List<Integer> checkAttrs(String[] attrs) {
+        if (attrs.length != 3) {
+            return DEFAULT_INTERVALS;
+        }
+        if (isNumber(attrs)) {
+            return Stream.of(attrs)
+                    .map(Integer::valueOf)
+                    .collect(Collectors.toList());
+        } else {
+            return DEFAULT_INTERVALS;
         }
     }
 
-    private void startExercise(Properties properties) {
-        final int durationInitial = Integer.parseInt(properties.getProperty("beep.duration.initial"));
-        final int durationExercise = Integer.parseInt(properties.getProperty("beep.duration.exercise"));
-        final int durationRelax = Integer.parseInt(properties.getProperty("beep.duration.relax"));
+    private static boolean isNumber(String[] attrs) {
+        return Stream.of(attrs).allMatch(attr -> attr.matches(NUMBER_REGEX));
+    }
+
+
+    private void startExercise(List<Integer> intervals) {
         final LocalDateTime startTime = LocalDateTime.now();
 
         initialPhase();
-        heatUpPhase(durationInitial);
-        exercisingPhase(durationExercise, durationRelax, startTime);
+        heatUpPhase(intervals.get(0));
+        exercisingPhase(intervals.get(1), intervals.get(2), startTime);
         finishPhase();
     }
 
@@ -81,6 +88,7 @@ public class CycloTrainer {
 
     private void finishPhase() {
         System.out.println("Finish !!!");
+        sleep(Duration.ofMillis(BEEP_DURATION_SHORT));
         beep();
         sleep(Duration.ofMillis(BEEP_DURATION_SHORT));
         beep();
